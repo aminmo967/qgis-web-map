@@ -375,24 +375,78 @@ routingControl.addTo(map);
 
 
 // ==========================================
-// شروع مسیریابی
+// 🚗🚶 مسیریابی خودرو و پیاده
 // ==========================================
 
-document.getElementById('routeButton').onclick = function() {
+var routeLayer = null;
+var destinationMarker = null;
+var routingMode = 'driving';
+
+
+// ------------------------------------------
+// دکمه‌های مسیریابی
+// ------------------------------------------
+
+var routingControl = L.control({
+    position: 'topright'
+});
+
+routingControl.onAdd = function(map) {
+
+    var div = L.DomUtil.create(
+        'div',
+        'leaflet-bar leaflet-control'
+    );
+
+    div.style.background = 'white';
+    div.style.padding = '5px';
+    div.style.borderRadius = '6px';
+
+    div.innerHTML =
+        '<button id="carRouteButton" ' +
+        'style="display:block;width:130px;' +
+        'margin-bottom:5px;padding:8px;' +
+        'cursor:pointer;border:1px solid #999;' +
+        'border-radius:5px;background:white;">' +
+        '🚗 مسیر خودرو' +
+        '</button>' +
+
+        '<button id="footRouteButton" ' +
+        'style="display:block;width:130px;' +
+        'padding:8px;cursor:pointer;' +
+        'border:1px solid #999;' +
+        'border-radius:5px;background:white;">' +
+        '🚶 مسیر پیاده' +
+        '</button>';
+
+    L.DomEvent.disableClickPropagation(div);
+
+    return div;
+};
+
+routingControl.addTo(map);
+
+
+// ------------------------------------------
+// تابع شروع مسیریابی
+// ------------------------------------------
+
+function startRouting(mode) {
+
+    routingMode = mode;
 
     if (!map._userLocation) {
 
         alert(
             'ابتدا روی دکمه 📍 بزنید ' +
-            'تا موقعیت شما مشخص شود.'
+            'تا موقعیت فعلی شما مشخص شود.'
         );
 
         return;
     }
 
     alert(
-        'حالا روی مقصد موردنظر ' +
-        'در نقشه کلیک کنید.'
+        'حالا روی مقصد موردنظر در نقشه کلیک کنید.'
     );
 
 
@@ -419,34 +473,79 @@ document.getElementById('routeButton').onclick = function() {
         // نمایش مقصد
         destinationMarker = L.marker(end)
             .addTo(map)
-            .bindPopup('🎯 مقصد')
+            .bindPopup(
+                routingMode === 'driving'
+                ? '🎯 مقصد خودرو'
+                : '🎯 مقصد پیاده'
+            )
             .openPopup();
 
 
-        // ==================================
-        // درخواست مسیر خودرو
-        // ==================================
+        // ----------------------------------
+        // انتخاب سرویس مسیریابی
+        // ----------------------------------
+
+        var profile;
+        var server;
+
+        if (routingMode === 'driving') {
+
+            profile = 'driving';
+
+            server =
+                'https://routing.openstreetmap.de/routed-car';
+
+        } else {
+
+            profile = 'foot';
+
+            server =
+                'https://routing.openstreetmap.de/routed-foot';
+        }
+
+
+        // ----------------------------------
+        // ساخت URL
+        // ----------------------------------
 
         var url =
-            'https://router.project-osrm.org/route/v1/driving/' +
+            server +
+            '/route/v1/' +
+            profile +
+            '/' +
             start.lng + ',' + start.lat +
             ';' +
             end.lng + ',' + end.lat +
             '?overview=full&geometries=geojson';
 
 
+        // ----------------------------------
+        // درخواست مسیر
+        // ----------------------------------
+
         fetch(url)
 
         .then(function(response) {
+
+            if (!response.ok) {
+                throw new Error(
+                    'HTTP Error: ' + response.status
+                );
+            }
+
             return response.json();
+
         })
 
         .then(function(data) {
 
-            if (data.code !== 'Ok') {
+            if (
+                !data.routes ||
+                data.routes.length === 0
+            ) {
 
                 alert(
-                    'مسیر پیدا نشد.'
+                    'برای این مقصد مسیری پیدا نشد.'
                 );
 
                 return;
@@ -456,7 +555,10 @@ document.getElementById('routeButton').onclick = function() {
             var route = data.routes[0];
 
 
+            // --------------------------------
             // رسم مسیر
+            // --------------------------------
+
             routeLayer = L.geoJSON(
                 route.geometry,
                 {
@@ -467,7 +569,10 @@ document.getElementById('routeButton').onclick = function() {
             ).addTo(map);
 
 
+            // --------------------------------
             // نمایش کل مسیر
+            // --------------------------------
+
             map.fitBounds(
                 routeLayer.getBounds(),
                 {
@@ -476,21 +581,36 @@ document.getElementById('routeButton').onclick = function() {
             );
 
 
+            // --------------------------------
             // فاصله
+            // --------------------------------
+
             var distance =
                 (route.distance / 1000).toFixed(2);
 
 
+            // --------------------------------
             // زمان
+            // --------------------------------
+
             var duration =
                 Math.round(route.duration / 60);
 
 
+            var modeName =
+                routingMode === 'driving'
+                ? '🚗 خودرو'
+                : '🚶 پیاده';
+
+
             alert(
-                '🚗 مسیر پیدا شد\n\n' +
+                modeName +
+                ' - مسیر پیدا شد\n\n' +
+
                 '📏 فاصله: ' +
                 distance +
                 ' کیلومتر\n' +
+
                 '⏱ زمان تقریبی: ' +
                 duration +
                 ' دقیقه'
@@ -503,15 +623,40 @@ document.getElementById('routeButton').onclick = function() {
             console.log(error);
 
             alert(
-                'خطا در دریافت مسیر.\n' +
-                'اتصال اینترنت را بررسی کنید.'
+                'خطا در دریافت مسیر.\n\n' +
+                'لطفاً اتصال اینترنت را بررسی کنید.'
             );
 
         });
 
     });
+}
 
-};
+
+// ------------------------------------------
+// کلیک دکمه خودرو
+// ------------------------------------------
+
+document
+    .getElementById('carRouteButton')
+    .onclick = function() {
+
+        startRouting('driving');
+
+    };
+
+
+// ------------------------------------------
+// کلیک دکمه پیاده
+// ------------------------------------------
+
+document
+    .getElementById('footRouteButton')
+    .onclick = function() {
+
+        startRouting('foot');
+
+    };
         </script>
     
     </body>
