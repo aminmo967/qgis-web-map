@@ -287,15 +287,134 @@ locationButton.onAdd = function(map) {
 locationButton.addTo(map);
 
 map.on('locationfound', function(e) {
+
+    map._userLocation = e.latlng;
+
     L.marker(e.latlng)
         .addTo(map)
         .bindPopup('موقعیت فعلی شما')
         .openPopup();
 });
-
-map.on('locationerror', function(e) {
+map.on('locationerror', function(e) 
     alert('دسترسی به موقعیت مکانی امکان‌پذیر نیست.');
 });
+ // =============================
+// مسیریابی خودرو و پیاده
+// =============================
+
+var routeLayer = null;
+var destinationMarker = null;
+var currentMode = "driving";
+
+// کنترل مسیریابی
+var routingControl = L.control({position: 'topright'});
+
+routingControl.onAdd = function(map) {
+
+    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+
+    div.style.backgroundColor = 'white';
+    div.style.padding = '6px';
+    div.style.width = '130px';
+
+    div.innerHTML =
+        '<div style="font-weight:bold;margin-bottom:5px;">مسیریابی</div>' +
+        '<button id="carRoute" style="width:60px;">🚗 خودرو</button>' +
+        '<button id="footRoute" style="width:60px;">🚶 پیاده</button>';
+
+    L.DomEvent.disableClickPropagation(div);
+
+    return div;
+};
+
+routingControl.addTo(map);
+
+
+// انتخاب حالت خودرو
+document.getElementById('carRoute').onclick = function() {
+    currentMode = "driving";
+    alert("حالت خودرو انتخاب شد. مقصد را روی نقشه کلیک کنید.");
+};
+
+
+// انتخاب حالت پیاده
+document.getElementById('footRoute').onclick = function() {
+    currentMode = "foot";
+    alert("حالت پیاده انتخاب شد. مقصد را روی نقشه کلیک کنید.");
+};
+
+
+// انتخاب مقصد روی نقشه
+map.on('click', function(e) {
+
+    // اگر هنوز موقعیت کاربر مشخص نشده
+    if (!map._userLocation) {
+        alert("ابتدا روی دکمه 📍 بزنید تا موقعیت شما مشخص شود.");
+        return;
+    }
+
+    var start = map._userLocation;
+    var end = e.latlng;
+
+    // حذف مسیر قبلی
+    if (routeLayer) {
+        map.removeLayer(routeLayer);
+    }
+
+    if (destinationMarker) {
+        map.removeLayer(destinationMarker);
+    }
+
+    // نمایش مقصد
+    destinationMarker = L.marker(end)
+        .addTo(map)
+        .bindPopup("مقصد")
+        .openPopup();
+
+    // درخواست مسیر
+    var url =
+        "https://router.project-osrm.org/route/v1/" +
+        currentMode + "/" +
+        start.lng + "," + start.lat + ";" +
+        end.lng + "," + end.lat +
+        "?overview=full&geometries=geojson&steps=true";
+
+    fetch(url)
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+
+            if (data.code !== "Ok") {
+                alert("مسیر پیدا نشد.");
+                return;
+            }
+
+            var route = data.routes[0];
+
+            routeLayer = L.geoJSON(route.geometry)
+                .addTo(map);
+
+            map.fitBounds(routeLayer.getBounds());
+
+            var distance =
+                (route.distance / 1000).toFixed(2);
+
+            var duration =
+                Math.round(route.duration / 60);
+
+            alert(
+                "فاصله: " + distance +
+                " کیلومتر\n" +
+                "زمان تقریبی: " + duration +
+                " دقیقه"
+            );
+        })
+        .catch(function(error) {
+            console.log(error);
+            alert("خطا در دریافت مسیر.");
+        });
+});           
         </script>
     
     </body>
