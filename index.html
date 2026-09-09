@@ -455,7 +455,34 @@ map.on('locationerror', function(e) {
     );
 
 });
+// ==========================================
+// 📍 نمایش موقعیت دریافت‌شده از لینک
+// ==========================================
 
+var params = new URLSearchParams(window.location.search);
+
+var sharedLat = parseFloat(params.get('lat'));
+var sharedLng = parseFloat(params.get('lng'));
+
+if (!isNaN(sharedLat) && !isNaN(sharedLng)) {
+
+    var sharedLocation = L.latLng(
+        sharedLat,
+        sharedLng
+    );
+
+    L.marker(sharedLocation)
+        .addTo(map)
+        .bindPopup(
+            '📍 موقعیت ارسال‌شده توسط کاربر'
+        )
+        .openPopup();
+
+    map.setView(
+        sharedLocation,
+        18
+    );
+}
 
 // ==========================================
 // 🚗🚶 کنترل مسیریابی
