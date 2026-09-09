@@ -305,7 +305,108 @@ locationButton.onAdd = function(map) {
 };
 
 locationButton.addTo(map);
+// ==========================================
+// 📤 ارسال موقعیت
+// ==========================================
 
+var shareLocationButton = L.control({
+    position: 'topleft'
+});
+
+shareLocationButton.onAdd = function(map) {
+
+    var div = L.DomUtil.create(
+        'div',
+        'leaflet-control'
+    );
+
+    div.style.marginTop = '5px';
+
+    div.innerHTML =
+        '<button id="shareLocationButton" ' +
+        'style="display:block;width:140px;height:42px;' +
+        'border:1px solid #777;' +
+        'border-radius:6px;background:white;' +
+        'cursor:pointer;font-size:14px;">' +
+        '📤 ارسال موقعیت' +
+        '</button>';
+
+    L.DomEvent.disableClickPropagation(div);
+
+    return div;
+};
+
+shareLocationButton.addTo(map);
+
+
+// ==========================================
+// 📤 انتخاب روش ارسال
+// ==========================================
+
+document.getElementById(
+    'shareLocationButton'
+).onclick = function() {
+
+    if (!map._userLocation) {
+
+        alert(
+            'ابتدا روی «📍 موقعیت من» بزنید.'
+        );
+
+        return;
+    }
+
+    var lat = map._userLocation.lat;
+    var lng = map._userLocation.lng;
+
+    var mapLink =
+        window.location.origin +
+        window.location.pathname +
+        '?lat=' + lat +
+        '&lng=' + lng;
+
+    var message =
+        '📍 موقعیت کاربر\n\n' +
+        'من در محل بلوک به مشکل برخورده‌ام.\n' +
+        'لطفاً راهنمایی کنید.\n\n' +
+        'مشاهده موقعیت روی نقشه:\n' +
+        mapLink;
+
+
+    var choice = confirm(
+        'روش ارسال را انتخاب کنید:\n\n' +
+        'OK = واتساپ\n' +
+        'Cancel = بله'
+    );
+
+
+    if (choice) {
+
+        var whatsappUrl =
+            'https://wa.me/?text=' +
+            encodeURIComponent(message);
+
+        window.open(
+            whatsappUrl,
+            '_blank'
+        );
+
+    } else {
+
+        var baleUrl =
+            'https://ble.ir/share/url?url=' +
+            encodeURIComponent(mapLink) +
+            '&text=' +
+            encodeURIComponent(message);
+
+        window.open(
+            baleUrl,
+            '_blank'
+        );
+
+    }
+
+};
 
 // ==========================================
 // 📍 دریافت موقعیت
