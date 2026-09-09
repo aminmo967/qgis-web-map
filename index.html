@@ -264,6 +264,39 @@
             }
         });
         setBounds();
+            // موقعیت فعلی کاربر
+var locationButton = L.control({position: 'topleft'});
+
+locationButton.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    div.innerHTML = '<a href="#" title="موقعیت من" style="font-size:20px;">📍</a>';
+
+    div.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        map.locate({
+            setView: true,
+            maxZoom: 18
+        });
+    };
+
+    return div;
+};
+
+locationButton.addTo(map);
+
+map.on('locationfound', function(e) {
+    L.marker(e.latlng)
+        .addTo(map)
+        .bindPopup('موقعیت فعلی شما')
+        .openPopup();
+});
+
+map.on('locationerror', function(e) {
+    alert('دسترسی به موقعیت مکانی امکان‌پذیر نیست.');
+});
         </script>
+    
     </body>
 </html>
